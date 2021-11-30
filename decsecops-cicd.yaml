@@ -294,7 +294,6 @@ Resources:
           - Key: pipeline-name
             Value: !Sub ${AWS::StackName}-pipeline
 
-
   # creating a bucket for storing artifacts, with server side encryption enabled.
   CodePipelineArtifactStoreBucket:
     Type: 'AWS::S3::Bucket'
