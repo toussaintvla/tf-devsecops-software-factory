@@ -40,7 +40,37 @@ resource "aws_s3_bucket" "devsecops_factory_artifacts_bucket" {
 
 resource "aws_s3_bucket_policy" "devsecops_factory_artifacts_bucket_policy" {
   bucket = aws_s3_bucket.devsecops_factory_artifacts_bucket.id
-  policy = data.aws_iam_policy_document.devsecops_factory_artifacts_bucket_access.json
+  policy = jsonencode(
+    {
+      Version = "2012-10-17"
+      Id      = "ArtifactsPolicy"
+      Statement = [
+        {
+          Sid       = "DenyUnEncryptedObjectUploads"
+          Effect    = "Deny"
+          Principal = "*"
+          Action    = "s3:PutObject"
+          Resource  = ["${aws_s3_bucket.devsecops_factory_artifacts_bucket.arn}/*"]
+          Condition = {
+            StringNotEquals = {
+              "s3:x-amz-server-side-encryption" = "aws:kms"
+            }
+          }
+        },
+        {
+          Sid       = "DenyInsecureConnections"
+          Effect    = "Deny"
+          Principal = "*"
+          Action    = "s3:*"
+          Resource  = ["${aws_s3_bucket.devsecops_factory_artifacts_bucket.arn}/*"]
+          Condition = {
+            Bool = {
+              "aws:SecureTransport" = false
+            }
+          }
+        }
+      ]
+  })
 }
 
 resource "aws_s3_bucket" "devsecops_factory_cloudtrail_bucket" {
@@ -83,7 +113,49 @@ resource "aws_s3_bucket" "devsecops_factory_cloudtrail_bucket" {
   }
 }
 
-resource "aws_s3_bucket_policy" "devsecops_factory_cloudtrail_bucket_policy" {
+/* resource "aws_s3_bucket_policy" "devsecops_factory_cloudtrail_bucket_policy" {
   bucket = aws_s3_bucket.devsecops_factory_cloudtrail_bucket.id
-  policy = data.aws_iam_policy_document.devsecops_factory_cloudtrail_bucket_access.json
-}
+  policy = jsonencode(
+    {
+      Version = "2012-10-17"
+      Id      = "CloudTrailPolicy"
+      Statement = [
+        {
+          Sid       = "AWSCloudTrailAclCheck"
+          Effect    = "Allow"
+          Principal = "*"
+          Action    = "s3:GetBucketAcl"
+          Resource  = ["${aws_s3_bucket.devsecops_factory_cloudtrail_bucket.arn}/*"]
+          Condition = {
+            StringNotEquals = {
+              "s3:x-amz-server-side-encryption" = "aws:kms"
+            }
+          }
+        },
+        {
+          Sid       = "AWSCloudTrailWrite"
+          Effect    = "Allow"
+          Principal = "*"
+          Action    = "s3:PutObject"
+          Resource  = ["${aws_s3_bucket.devsecops_factory_cloudtrail_bucket.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"]
+          Condition = {
+            StringNotEquals = {
+              "s3:x-amz-acl" = "bucket-owner-full-control"
+            }
+          }
+        },
+        {
+          Sid       = "AllowSSLRequestsOnly"
+          Effect    = "Deny"
+          Principal = "*"
+          Action    = "s3:*"
+          Resource  = ["${aws_s3_bucket.devsecops_factory_cloudtrail_bucket.arn}/*"]
+          Condition = {
+            Bool = {
+              "aws:SecureTransport" = false
+            }
+          }
+        }
+      ]
+  })
+} */

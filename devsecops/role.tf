@@ -65,82 +65,6 @@ data "aws_iam_policy_document" "devsecops_factory_cloudtrail_access" {
   }
 }
 
-data "aws_iam_policy_document" "devsecops_factory_artifacts_bucket_access" {
-  statement {
-    sid = "${local.devsecops_factory_name_iam}DenyUnEncryptedObjectUploads"
-    principals {
-      type        = "*"
-      identifiers = ["*"]
-    }
-    effect    = "Deny"
-    actions   = ["s3:PutObject"]
-    resources = ["${aws_s3_bucket.devsecops_factory_artifacts_bucket.arn}/*"]
-    condition {
-      test     = "StringNotEquals"
-      variable = "s3:x-amz-server-side-encryption"
-      values   = ["aws:kms"]
-    }
-  }
-  statement {
-    sid = "${local.devsecops_factory_name_iam}DenyInsecureConnections"
-    principals {
-      type        = "*"
-      identifiers = ["*"]
-    }
-    effect    = "Deny"
-    actions   = ["s3:*"]
-    resources = ["${aws_s3_bucket.devsecops_factory_artifacts_bucket.arn}/*"]
-    condition {
-      test     = "Bool"
-      variable = "aws:SecureTransport"
-      values   = [false]
-    }
-  }
-}
-
-data "aws_iam_policy_document" "devsecops_factory_cloudtrail_bucket_access" {
-  statement {
-    sid = "${local.devsecops_factory_name_iam}AWSCloudTrailAclCheck"
-    principals {
-      type        = "*"
-      identifiers = ["cloudtrail.amazonaws.com"]
-    }
-    effect    = "Allow"
-    actions   = ["s3:GetBucketAcl"]
-    resources = ["${aws_s3_bucket.devsecops_factory_artifacts_bucket.arn}/*"]
-  }
-  statement {
-    sid = "${local.devsecops_factory_name_iam}AWSCloudTrailWrite"
-    principals {
-      type        = "Service"
-      identifiers = ["cloudtrail.amazonaws.com"]
-    }
-    effect    = "Allow"
-    actions   = ["s3:PutObject"]
-    resources = ["${aws_s3_bucket.devsecops_factory_artifacts_bucket.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"]
-    condition {
-      test     = "StringNotEquals"
-      variable = "s3:x-amz-acl"
-      values   = ["bucket-owner-full-control"]
-    }
-  }
-  statement {
-    sid = "${local.devsecops_factory_name_iam}AllowSSLRequestsOnly"
-    principals {
-      type        = "*"
-      identifiers = ["*"]
-    }
-    effect    = "Deny"
-    actions   = ["s3:*"]
-    resources = ["${aws_s3_bucket.devsecops_factory_cloudtrail_bucket.arn}/*"]
-    condition {
-      test     = "Bool"
-      variable = "aws:SecureTransport"
-      values   = [false]
-    }
-  }
-}
-
 data "aws_iam_policy_document" "devsecops_factory_lambda_access" {
   statement {
     sid    = "${local.devsecops_factory_name_iam}LambdaAccess"
@@ -248,7 +172,7 @@ data "aws_iam_policy_document" "devsecops_factory_cloudwatch_event_access" {
     sid       = "${local.devsecops_factory_name_iam}CloudWatchEventAccess"
     effect    = "Allow"
     actions   = ["codepipeline:StartPipelineExecution"]
-    resources = ["${aws_codepipeline.devsecops_factory_codepipeline.arn}"]
+    resources = ["*"] # ${aws_codepipeline.devsecops_factory_codepipeline.arn}
   }
 }
 

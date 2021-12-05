@@ -10,7 +10,7 @@ resource "aws_cloudwatch_log_group" "devsecops_factory_cloudtrail_log_group" {
 
 resource "aws_cloudwatch_event_rule" "devsecops_factory_cloudwatch_event_rule" {
   name          = "${var.devsecops_factory_name}-codepipeline-trigger"
-  description   = "Trigger CodePipeline from CodeCommit Repository State Change"
+  description   = "Trigger CodePipeline for CodeCommit Repository State Change"
   event_pattern = <<EOF
     {
         "source": [
@@ -47,8 +47,7 @@ resource "aws_cloudwatch_event_target" "devsecops_factory_cloudwatch_event_targe
 
 resource "aws_cloudwatch_event_rule" "devsecops_factory_pipeline_event_rule" {
   name          = "${var.devsecops_factory_name}-codepipeline-notifications"
-  description   = "Send CodePipeline SNS notifications from CodePipeline Stage Execution State Change"
-  role_arn      = aws_iam_role.devsecops_factory_cloudwatch_event_role.arn
+  description   = "Send CodePipeline SNS notifications for CodePipeline Stage Execution State Change"
   event_pattern = <<EOF
     {
         "source": [
@@ -67,22 +66,9 @@ resource "aws_cloudwatch_event_target" "devsecops_factory_pipeline_event_target"
   arn       = aws_sns_topic.devsecops_factory_pipeline_topic.arn
 }
 
-resource "aws_cloudtrail" "devsecops_factory_cloudtrail" {
-  depends_on                 = [aws_s3_bucket_policy.devsecops_factory_cloudtrail_bucket_policy]
-  name                       = "${var.devsecops_factory_name}-cloudtrail"
-  s3_bucket_name             = aws_s3_bucket.devsecops_factory_artifacts_bucket.id
-  cloud_watch_logs_group_arn = aws_cloudwatch_log_group.devsecops_factory_cloudtrail_log_group.arn
-  cloud_watch_logs_role_arn  = aws_iam_role.devsecops_factory_cloudtrail_role.arn
-  enable_logging             = true
-  enable_log_file_validation = true
-  is_multi_region_trail      = true
-}
-
 resource "aws_cloudwatch_log_metric_filter" "devsecops_factory_pipeline_state_change_metric" {
   name           = "${var.devsecops_factory_name}-pipeline-state-change-metric"
-  pattern        = <<EOF
-    "{ ($.eventName = "StartPipelineExecution") || ($.eventName = "StopPipelineExecution") || ($.eventName = "UpdatePipeline") || ($.eventName = "DeletePipeline") }"
-  EOF
+  pattern        = "{ ($.eventName = \"StartPipelineExecution\") || ($.eventName = \"StopPipelineExecution\") || ($.eventName = \"UpdatePipeline\") || ($.eventName = \"DeletePipeline\") }"
   log_group_name = aws_cloudwatch_log_group.devsecops_factory_cloudtrail_log_group.name
 
   metric_transformation {
@@ -107,9 +93,7 @@ resource "aws_cloudwatch_metric_alarm" "devsecops_factory_pipeline_state_change_
 
 resource "aws_cloudwatch_log_metric_filter" "devsecops_factory_codebuild_state_change_metric" {
   name           = "${var.devsecops_factory_name}-codebuild-state-change-metric"
-  pattern        = <<EOF
-    "{ (($.eventSource = "codebuild.amazonaws.com") && (($.eventName = "CreateProject") || ($.eventName = "DeleteProject"))) }"
-  EOF
+  pattern        = "{ (($.eventSource = \"codebuild.amazonaws.com\") && (($.eventName = \"CreateProject\") || ($.eventName = \"DeleteProject\"))) }"
   log_group_name = aws_cloudwatch_log_group.devsecops_factory_cloudtrail_log_group.name
 
   metric_transformation {

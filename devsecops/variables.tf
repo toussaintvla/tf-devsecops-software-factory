@@ -17,7 +17,7 @@ variable "branch_name" {
 variable "repository_name" {
   type        = string
   description = "Git repository name"
-  default     = "eksrepo"
+  default     = "devops-pro"
 }
 
 variable "sast_tool" {
@@ -73,7 +73,7 @@ variable "pipeline_approver_email" {
 variable "ecr_nonprod_repository" {
   type        = string
   description = "Container image repository"
-  default     = "nginx-staging"
+  default     = "test"
 }
 
 variable "ecr_prod_repository" {

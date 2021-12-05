@@ -25,38 +25,6 @@ resource "aws_sns_topic" "devsecops_factory_cloudtrail_topic" {
   }
 }
 
-resource "aws_sns_topic_policy" "devsecops_factory_approval_topic_policy" {
-  arn    = aws_sns_topic.devsecops_factory_approval_topic.arn
-  policy = data.aws_iam_policy_document.devsecops_factory_topic_policy.json
-}
-
-resource "aws_sns_topic_policy" "devsecops_factory_pipeline_topic_policy" {
-  arn    = aws_sns_topic.devsecops_factory_pipeline_topic.arn
-  policy = data.aws_iam_policy_document.devsecops_factory_topic_policy.json
-}
-
-resource "aws_sns_topic_policy" "devsecops_factory_cloudtrail_topic_policy" {
-  arn    = aws_sns_topic.devsecops_factory_cloudtrail_topic.arn
-  policy = data.aws_iam_policy_document.devsecops_factory_topic_policy.json
-}
-
-data "aws_iam_policy_document" "devsecops_factory_topic_policy" {
-  statement {
-    effect    = "Allow"
-    actions   = ["SNS:Publish"]
-    resources = ["${aws_sns_topic.devsecops_factory_approval_topic.arn}"]
-    condition {
-      test     = "StringEquals"
-      variable = "aws:sourceowner"
-      values   = ["${data.aws_caller_identity.current.account_id}"]
-    }
-    principals {
-      type        = "AWS"
-      identifiers = ["*"]
-    }
-  }
-}
-
 resource "aws_sns_topic_subscription" "devsecops_factory_approval_target" {
   topic_arn = aws_sns_topic.devsecops_factory_approval_topic.arn
   protocol  = "email"

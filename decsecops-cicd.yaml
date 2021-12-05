@@ -184,6 +184,114 @@ Resources:
       RetentionInDays: 7
       #KmsKeyId: !Ref PipelineKMSKey
 
+  TrailLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      RetentionInDays: 90
+
+  ### Cloudwatch event to trigger the pipeline on commit
+  AmazonCloudWatchEventRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      EventPattern:
+        source:
+          - aws.codecommit
+        detail-type:
+          - CodeCommit Repository State Change
+        resources:
+          - !Join
+            - ''
+            - - 'arn:aws-us-gov:codecommit:'
+              - !Ref 'AWS::Region'
+              - ':'
+              - !Ref 'AWS::AccountId'
+              - ':'
+              - !Ref RepositoryName
+        detail:
+          event:
+            - referenceCreated
+            - referenceUpdated
+          referenceType:
+            - branch
+          referenceName:
+            - master
+      Targets:
+        - Arn: !Join
+            - ''
+            - - 'arn:aws-us-gov:codepipeline:'
+              - !Ref 'AWS::Region'
+              - ':'
+              - !Ref 'AWS::AccountId'
+              - ':'
+              - !Ref AppPipeline
+          RoleArn: !GetAtt
+            - AmazonCloudWatchEventRole
+            - Arn
+          Id: codepipeline-AppPipeline
+
+  ###Cloudwatch event rule for SNS notifications for pipeline state change
+  CloudWatchPipelineEventRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      EventPattern:
+        source:
+          - aws.codepipeline
+        detail-type:
+          - CodePipeline Stage Execution State Change
+      Targets:
+        - Arn: !Ref PipelineTopic
+          Id: "PipelineNotifications"
+
+  PipelineStateChangeMetricFiletr:
+    Type: 'AWS::Logs::MetricFilter'
+    Properties:
+        FilterPattern: '{ ($.eventName = "StartPipelineExecution") || ($.eventName = "StopPipelineExecution") || ($.eventName = "UpdatePipeline") || ($.eventName = "DeletePipeline") }'
+        LogGroupName: !Ref TrailLogGroup
+        MetricTransformations:
+            - MetricName: "pipelineEvent"
+              MetricNamespace: "CloudTrailMetrics"
+              MetricValue: "1"
+
+  PipelineStateChangeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-CloudTrailPipelineEventChange
+      AlarmDescription: "Alarm when cloudtrail receives an state change event from codepipeline"
+      MetricName: "pipelineEvent"
+      AlarmActions:
+        - !Ref CloudTrailTopic
+      ComparisonOperator: "GreaterThanThreshold"
+      EvaluationPeriods: 1
+      Threshold: 0
+      Namespace: "CloudTrailMetrics"
+      Statistic: "Sum"
+      Period: 1800
+
+  CodeBuildChangeMetricFilter:
+    Type: 'AWS::Logs::MetricFilter'
+    Properties:
+        FilterPattern: '{ (($.eventSource = "codebuild.amazonaws.com") && (($.eventName = "CreateProject") || ($.eventName = "DeleteProject"))) }'
+        LogGroupName: !Ref TrailLogGroup
+        MetricTransformations:
+            - MetricName: "codebuildEvent"
+              MetricNamespace: "CloudTrailMetrics"
+              MetricValue: "1"
+
+  CodeBuildStateChangeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-CloudTrailCodebuildEventChange
+      AlarmDescription: "Alarm when cloudtrail receives an state change event from codebuild"
+      MetricName: "codebuildEvent"
+      AlarmActions:
+        - !Ref CloudTrailTopic
+      ComparisonOperator: "GreaterThanThreshold"
+      EvaluationPeriods: 1
+      Threshold: 0
+      Namespace: "CloudTrailMetrics"
+      Statistic: "Sum"
+      Period: 1800
+
   PipelineKMSKey:
     Type: AWS::KMS::Key
     Properties:
@@ -340,88 +448,6 @@ Resources:
               Bool:
                 'aws:SecureTransport': false
 
-  ###Cloud watch event role
-  AmazonCloudWatchEventRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - events.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Path: /
-      Policies:
-        - PolicyName: cwe-pipeline-execution
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action: 'codepipeline:StartPipelineExecution'
-                Resource: !Join
-                  - ''
-                  - - 'arn:aws-us-gov:codepipeline:'
-                    - !Ref 'AWS::Region'
-                    - ':'
-                    - !Ref 'AWS::AccountId'
-                    - ':'
-                    - !Ref AppPipeline
-
-  ### Cloudwatch event to trigger the pipeline on commit
-  AmazonCloudWatchEventRule:
-    Type: 'AWS::Events::Rule'
-    Properties:
-      EventPattern:
-        source:
-          - aws.codecommit
-        detail-type:
-          - CodeCommit Repository State Change
-        resources:
-          - !Join
-            - ''
-            - - 'arn:aws-us-gov:codecommit:'
-              - !Ref 'AWS::Region'
-              - ':'
-              - !Ref 'AWS::AccountId'
-              - ':'
-              - !Ref RepositoryName
-        detail:
-          event:
-            - referenceCreated
-            - referenceUpdated
-          referenceType:
-            - branch
-          referenceName:
-            - master
-      Targets:
-        - Arn: !Join
-            - ''
-            - - 'arn:aws-us-gov:codepipeline:'
-              - !Ref 'AWS::Region'
-              - ':'
-              - !Ref 'AWS::AccountId'
-              - ':'
-              - !Ref AppPipeline
-          RoleArn: !GetAtt
-            - AmazonCloudWatchEventRole
-            - Arn
-          Id: codepipeline-AppPipeline
-
-  ###Cloudwatch event rule for SNS notifications for pipeline state change
-  CloudWatchPipelineEventRule:
-    Type: 'AWS::Events::Rule'
-    Properties:
-      EventPattern:
-        source:
-          - aws.codepipeline
-        detail-type:
-          - CodePipeline Stage Execution State Change
-      Targets:
-        - Arn: !Ref PipelineTopic
-          Id: "PipelineNotifications"
-
   ###Cloudtrail event notifications for pipeline updates, deletes, and codebuild project creation, deletion, etc.
   TrailBucket:
     Type: AWS::S3::Bucket
@@ -466,6 +492,35 @@ Resources:
             Bool:
               'aws:SecureTransport': false
 
+  ###Cloud watch event role
+  AmazonCloudWatchEventRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: cwe-pipeline-execution
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 'codepipeline:StartPipelineExecution'
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws-us-gov:codepipeline:'
+                    - !Ref 'AWS::Region'
+                    - ':'
+                    - !Ref 'AWS::AccountId'
+                    - ':'
+                    - !Ref AppPipeline
+
   Trail:
     DependsOn:
       - TrailBucketPolicy
@@ -479,11 +534,6 @@ Resources:
       EnableLogFileValidation: true
       CloudWatchLogsLogGroupArn: !GetAtt 'TrailLogGroup.Arn'
       CloudWatchLogsRoleArn: !GetAtt 'TrailLogGroupRole.Arn'
-
-  TrailLogGroup:
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      RetentionInDays: 90
 
   TrailLogGroupRole:
     Type: 'AWS::IAM::Role'
@@ -507,55 +557,157 @@ Resources:
             - 'logs:PutLogEvents'
             Resource: !GetAtt 'TrailLogGroup.Arn'
 
-  PipelineStateChangeMetricFiletr:
-    Type: 'AWS::Logs::MetricFilter'
+  ###StaticCode Analysis ServiceRole
+  StaticCodeAnalysisServiceRole:
+    Type: AWS::IAM::Role
     Properties:
-        FilterPattern: '{ ($.eventName = "StartPipelineExecution") || ($.eventName = "StopPipelineExecution") || ($.eventName = "UpdatePipeline") || ($.eventName = "DeletePipeline") }'
-        LogGroupName: !Ref TrailLogGroup
-        MetricTransformations:
-            - MetricName: "pipelineEvent"
-              MetricNamespace: "CloudTrailMetrics"
-              MetricValue: "1"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+      Policies:
+        - PolicyName: SecurityCodeAnalysisPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                  - logs:*
+                  - s3:*
+                  - cloudformation:*
+                  - cloudwatch:*
+                  - cloudtrail:*
+                  - codebuild:*
+                  - codecommit:*
+                  - codepipeline:*
+                  - ssm:*
+                  - lambda:*
+                  - kms:*
+                  - ecr:*
+                  - eks:DescribeCluster
+                Resource: '*'
+      Path: /
+      RoleName: !Join
+        - '-'
+        - - !Ref 'AWS::StackName'
+          - SecurityCodeAnalysisRole
 
-  PipelineStateChangeAlarm:
-    Type: AWS::CloudWatch::Alarm
+  #### Lambda Function Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
     Properties:
-      AlarmName: !Sub ${AWS::StackName}-CloudTrailPipelineEventChange
-      AlarmDescription: "Alarm when cloudtrail receives an state change event from codepipeline"
-      MetricName: "pipelineEvent"
-      AlarmActions:
-        - !Ref CloudTrailTopic
-      ComparisonOperator: "GreaterThanThreshold"
-      EvaluationPeriods: 1
-      Threshold: 0
-      Namespace: "CloudTrailMetrics"
-      Statistic: "Sum"
-      Period: 1800
+      RoleName: !Sub ${AWS::StackName}-LambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: lambda-execution-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:*
+                  - S3:*
+                  - securityhub:*
+                Resource: '*'
 
-  CodeBuildChangeMetricFilter:
-    Type: 'AWS::Logs::MetricFilter'
+  ###Pipeline Service Role
+  PipelineServiceRole:
+    Type: 'AWS::IAM::Role'
     Properties:
-        FilterPattern: '{ (($.eventSource = "codebuild.amazonaws.com") && (($.eventName = "CreateProject") || ($.eventName = "DeleteProject"))) }'
-        LogGroupName: !Ref TrailLogGroup
-        MetricTransformations:
-            - MetricName: "codebuildEvent"
-              MetricNamespace: "CloudTrailMetrics"
-              MetricValue: "1"
-
-  CodeBuildStateChangeAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub ${AWS::StackName}-CloudTrailCodebuildEventChange
-      AlarmDescription: "Alarm when cloudtrail receives an state change event from codebuild"
-      MetricName: "codebuildEvent"
-      AlarmActions:
-        - !Ref CloudTrailTopic
-      ComparisonOperator: "GreaterThanThreshold"
-      EvaluationPeriods: 1
-      Threshold: 0
-      Namespace: "CloudTrailMetrics"
-      Statistic: "Sum"
-      Period: 1800
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: !Sub ${AWS::StackName}-CodePipeline-Servicepolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'codecommit:CancelUploadArchive'
+                  - 'codecommit:GetBranch'
+                  - 'codecommit:GetCommit'
+                  - 'codecommit:GetUploadArchiveStatus'
+                  - 'codecommit:UploadArchive'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'codedeploy:CreateDeployment'
+                  - 'codedeploy:GetApplicationRevision'
+                  - 'codedeploy:GetDeployment'
+                  - 'codedeploy:GetDeploymentConfig'
+                  - 'codedeploy:RegisterApplicationRevision'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'codebuild:BatchGetBuilds'
+                  - 'codebuild:StartBuild'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'devicefarm:ListProjects'
+                  - 'devicefarm:ListDevicePools'
+                  - 'devicefarm:GetRun'
+                  - 'devicefarm:GetUpload'
+                  - 'devicefarm:CreateUpload'
+                  - 'devicefarm:ScheduleRun'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                  - 'lambda:ListFunctions'
+                  - 'lambda:CreateFunction'
+                  - 'lambda:UpdateFunctionConfiguration'
+                  - 'lambda:UpdateFunctionCode'
+                  - 'lambda:TagResource'
+                  - 'lambda:PublishVersion'
+                  - 'lambda:GetFunctionConfiguration'
+                  - 'lambda:GetFunction'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'iam:PassRole'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'elasticbeanstalk:*'
+                  - 'ec2:*'
+                  - 'elasticloadbalancing:*'
+                  - 'autoscaling:*'
+                  - 'cloudwatch:*'
+                  - 's3:*'
+                  - 'sns:*'
+                  - 'cloudformation:*'
+                  - 'rds:*'
+                  - 'sqs:*'
+                  - 'ecs:*'
+                  - 'logs:*'
+                  - 'kms:*'
+                  - 'ecr:*'
+                Resource: '*'
 
   ### AWS Config rules
   AWSConfigRule1:
@@ -963,158 +1115,6 @@ Resources:
       Tags:
         - Key: pipeline-name
           Value: !Sub ${AWS::StackName}-pipeline
-
-  ###StaticCode Analysis ServiceRole
-  StaticCodeAnalysisServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRole
-            Principal:
-              Service:
-                - codebuild.amazonaws.com
-      Policies:
-        - PolicyName: SecurityCodeAnalysisPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: iam:PassRole
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                  - logs:*
-                  - s3:*
-                  - cloudformation:*
-                  - cloudwatch:*
-                  - cloudtrail:*
-                  - codebuild:*
-                  - codecommit:*
-                  - codepipeline:*
-                  - ssm:*
-                  - lambda:*
-                  - kms:*
-                  - ecr:*
-                  - eks:DescribeCluster
-                Resource: '*'
-      Path: /
-      RoleName: !Join
-        - '-'
-        - - !Ref 'AWS::StackName'
-          - SecurityCodeAnalysisRole
-
-  #### Lambda Function Execution Role
-  LambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub ${AWS::StackName}-LambdaExecutionRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: "/"
-      Policies:
-        - PolicyName: lambda-execution-policy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:*
-                  - S3:*
-                  - securityhub:*
-                Resource: '*'
-
-  ###Pipeline Service Role
-  PipelineServiceRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - codepipeline.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Path: /
-      Policies:
-        - PolicyName: !Sub ${AWS::StackName}-CodePipeline-Servicepolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'codecommit:CancelUploadArchive'
-                  - 'codecommit:GetBranch'
-                  - 'codecommit:GetCommit'
-                  - 'codecommit:GetUploadArchiveStatus'
-                  - 'codecommit:UploadArchive'
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - 'codedeploy:CreateDeployment'
-                  - 'codedeploy:GetApplicationRevision'
-                  - 'codedeploy:GetDeployment'
-                  - 'codedeploy:GetDeploymentConfig'
-                  - 'codedeploy:RegisterApplicationRevision'
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - 'codebuild:BatchGetBuilds'
-                  - 'codebuild:StartBuild'
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - 'devicefarm:ListProjects'
-                  - 'devicefarm:ListDevicePools'
-                  - 'devicefarm:GetRun'
-                  - 'devicefarm:GetUpload'
-                  - 'devicefarm:CreateUpload'
-                  - 'devicefarm:ScheduleRun'
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - 'lambda:InvokeFunction'
-                  - 'lambda:ListFunctions'
-                  - 'lambda:CreateFunction'
-                  - 'lambda:UpdateFunctionConfiguration'
-                  - 'lambda:UpdateFunctionCode'
-                  - 'lambda:TagResource'
-                  - 'lambda:PublishVersion'
-                  - 'lambda:GetFunctionConfiguration'
-                  - 'lambda:GetFunction'
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - 'iam:PassRole'
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - 'elasticbeanstalk:*'
-                  - 'ec2:*'
-                  - 'elasticloadbalancing:*'
-                  - 'autoscaling:*'
-                  - 'cloudwatch:*'
-                  - 's3:*'
-                  - 'sns:*'
-                  - 'cloudformation:*'
-                  - 'rds:*'
-                  - 'sqs:*'
-                  - 'ecs:*'
-                  - 'logs:*'
-                  - 'kms:*'
-                  - 'ecr:*'
-                Resource: '*'
 
 ###Outputs
 Outputs:
