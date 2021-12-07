@@ -30,14 +30,13 @@ resource "aws_codebuild_project" "devsecops_factory_secrets_analysis_codebuild_p
 
   source {
     type      = "CODEPIPELINE"
-    buildspec = "${path.module}/buildspec-gitsecrets.yml"
+    buildspec = data.local_file.buildspec_gitsecrets.content
   }
 
   logs_config {
     cloudwatch_logs {
-      group_name          = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
-      stream_name         = "${var.devsecops_factory_name}-secret-analysis-log-stream"
-      /* report_build_status = "ENABLED" */
+      group_name  = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
+      stream_name = "${var.devsecops_factory_name}-secret-analysis-log-stream"
     }
   }
 
@@ -93,14 +92,13 @@ resource "aws_codebuild_project" "devsecops_factory_sast_codebuild_project" {
 
   source {
     type      = "CODEPIPELINE"
-    buildspec = "${var.sast_tool[0]}" == "Anchore" ? "${path.module}/buildspec-anchore.yml" : "${path.module}/buildspec-snyk.yml"
+    buildspec = "${var.sast_tool[0]}" == "Anchore" ? "${data.local_file.buildspec_anchore.content}" : "${data.local_file.buildspec_snyk.content}"
   }
 
   logs_config {
     cloudwatch_logs {
-      group_name          = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
-      stream_name         = "${var.devsecops_factory_name}-sast-analyisis-log-stream"
-      /* report_build_status = "ENABLED" */
+      group_name  = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
+      stream_name = "${var.devsecops_factory_name}-sast-analyisis-log-stream"
     }
   }
 
@@ -151,14 +149,13 @@ resource "aws_codebuild_project" "devsecops_factory_ecr_sast_codebuild_project" 
 
   source {
     type      = "CODEPIPELINE"
-    buildspec = "${path.module}/buildspec-ecr.yml"
+    buildspec = data.local_file.buildspec_ecr.content
   }
 
   logs_config {
     cloudwatch_logs {
-      group_name          = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
-      stream_name         = "${var.devsecops_factory_name}-ecr-sast-analysis-log-stream"
-      /* report_build_status = "ENABLED" */
+      group_name  = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
+      stream_name = "${var.devsecops_factory_name}-ecr-sast-analysis-log-stream"
     }
   }
 
@@ -207,14 +204,13 @@ resource "aws_codebuild_project" "devsecops_factory_dast_codebuild_project" {
 
   source {
     type      = "CODEPIPELINE"
-    buildspec = "${path.module}/buildspec-owasp-zap.yml"
+    buildspec = data.local_file.buildspec_owasp_zap.content
   }
 
   logs_config {
     cloudwatch_logs {
-      group_name          = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
-      stream_name         = "${var.devsecops_factory_name}-dast-analysis-log-stream"
-      /* report_build_status = "ENABLED" */
+      group_name  = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
+      stream_name = "${var.devsecops_factory_name}-dast-analysis-log-stream"
     }
   }
 

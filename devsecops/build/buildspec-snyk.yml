@@ -1,5 +1,3 @@
-#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-##  SPDX-License-Identifier: MIT-0
 version: 0.2
 phases:
   install:
@@ -7,7 +5,7 @@ phases:
       - echo "in the install phase"
       - npm install -g snyk
     finally:
-      - echo This always runs even if the login command fails   
+      - echo This always runs even if the login command fails
   pre_build:
     commands:
       - echo "inside pre_build stage"
@@ -37,7 +35,7 @@ phases:
         \"report\": . }" snyk-results.json > payload.json
       - echo ""
       - |
-        if (grep -E 'high|critical' payload.json); then 
+        if (grep -E 'high|critical' payload.json); then
           aws lambda invoke --function-name ImpToSecurityHubEKS --payload file://payload.json snyk-results.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
           echo "There are critical or high vulnerabilities.. failing the build"
           docker push $REPOSITORY_URI:latest

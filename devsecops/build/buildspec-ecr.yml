@@ -1,5 +1,3 @@
-#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#  SPDX-License-Identifier: MIT-0
 version: 0.2
 phases:
   install:
@@ -9,8 +7,8 @@ phases:
       - chmod +x ./kubectl
       - apt-get update && apt-get -y install jq python3-pip python3-dev && pip3 install --upgrade awscli
     finally:
-      - echo This always runs even if the login command fails 
-      
+      - echo This always runs even if the login command fails
+
   pre_build:
     commands:
       - echo "inside pre_build stage"
@@ -45,7 +43,7 @@ phases:
         \"report\": . }" ecr_scan_result.json > payload.json
       - echo ""
       - |
-        if (grep -E 'HIGH|CRITICAL' ecr_scan_result.json); then 
+        if (grep -E 'HIGH|CRITICAL' ecr_scan_result.json); then
           aws lambda invoke --function-name ImpToSecurityHubEKS --payload file://payload.json ecr_scan_result.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
           echo "There are critical or high vulnerabilities.. failing the build"
           exit 1;

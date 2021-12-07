@@ -104,7 +104,7 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
     }
   }
 
-  /*  stage {
+  /* stage {
     name = "Manual-Approval"
 
     action {

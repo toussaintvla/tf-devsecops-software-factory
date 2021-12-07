@@ -113,7 +113,7 @@ resource "aws_s3_bucket" "devsecops_factory_cloudtrail_bucket" {
   }
 }
 
-/* resource "aws_s3_bucket_policy" "devsecops_factory_cloudtrail_bucket_policy" {
+resource "aws_s3_bucket_policy" "devsecops_factory_cloudtrail_bucket_policy" {
   bucket = aws_s3_bucket.devsecops_factory_cloudtrail_bucket.id
   policy = jsonencode(
     {
@@ -121,23 +121,22 @@ resource "aws_s3_bucket" "devsecops_factory_cloudtrail_bucket" {
       Id      = "CloudTrailPolicy"
       Statement = [
         {
-          Sid       = "AWSCloudTrailAclCheck"
-          Effect    = "Allow"
-          Principal = "*"
-          Action    = "s3:GetBucketAcl"
-          Resource  = ["${aws_s3_bucket.devsecops_factory_cloudtrail_bucket.arn}/*"]
-          Condition = {
-            StringNotEquals = {
-              "s3:x-amz-server-side-encryption" = "aws:kms"
-            }
+          Sid    = "AWSCloudTrailAclCheck"
+          Effect = "Allow"
+          Principal = {
+            Service = "cloudtrail.amazonaws.com"
           }
+          Action   = "s3:GetBucketAcl"
+          Resource = ["${aws_s3_bucket.devsecops_factory_cloudtrail_bucket.arn}"]
         },
         {
-          Sid       = "AWSCloudTrailWrite"
-          Effect    = "Allow"
-          Principal = "*"
-          Action    = "s3:PutObject"
-          Resource  = ["${aws_s3_bucket.devsecops_factory_cloudtrail_bucket.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"]
+          Sid    = "AWSCloudTrailWrite"
+          Effect = "Allow"
+          Principal = {
+            Service = "cloudtrail.amazonaws.com"
+          }
+          Action   = "s3:PutObject"
+          Resource = ["${aws_s3_bucket.devsecops_factory_cloudtrail_bucket.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"]
           Condition = {
             StringNotEquals = {
               "s3:x-amz-acl" = "bucket-owner-full-control"
@@ -158,4 +157,4 @@ resource "aws_s3_bucket" "devsecops_factory_cloudtrail_bucket" {
         }
       ]
   })
-} */
+}

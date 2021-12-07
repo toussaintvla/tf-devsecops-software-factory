@@ -172,7 +172,7 @@ data "aws_iam_policy_document" "devsecops_factory_cloudwatch_event_access" {
     sid       = "${local.devsecops_factory_name_iam}CloudWatchEventAccess"
     effect    = "Allow"
     actions   = ["codepipeline:StartPipelineExecution"]
-    resources = ["*"] # ${aws_codepipeline.devsecops_factory_codepipeline.arn}
+    resources = ["${aws_codepipeline.devsecops_factory_codepipeline.arn}"]
   }
 }
 
