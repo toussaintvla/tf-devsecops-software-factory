@@ -16,7 +16,7 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
     name = "Source"
 
     action {
-      name             = "SourceAction"
+      name             = "Source-Action"
       category         = "Source"
       owner            = "AWS"
       provider         = "CodeCommit"
@@ -85,6 +85,59 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
     }
   }
 
+  /* stage {
+    name = "Build-Secrets-Scanning-and-SAST"
+
+    action {
+      name             = "Secret-Analysis"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      version          = "1"
+      input_artifacts  = ["source_output"]
+      output_artifacts = ["secret_artifacts"]
+      run_order        = 2
+
+      configuration = {
+        ProjectName = "${aws_codebuild_project.devsecops_factory_secrets_analysis_codebuild_project.name}"
+      }
+    }
+
+    action {
+      name             = "SAST-Analysis"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      version          = "1"
+      input_artifacts  = ["source_output"]
+      output_artifacts = ["sast_artifacts"]
+      run_order        = 2
+
+      configuration = {
+        ProjectName = "${aws_codebuild_project.devsecops_factory_sast_codebuild_project.name}"
+      }
+    }
+  }
+
+  stage {
+    name = "Build-SAST-and-Deploy-STG"
+
+    action {
+      name             = "ECR-SAST-Analysis"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      version          = "1"
+      input_artifacts  = ["source_output"]
+      output_artifacts = ["ecr_sast_artifacts"]
+      run_order        = 4
+
+      configuration = {
+        ProjectName = "${aws_codebuild_project.devsecops_factory_ecr_sast_codebuild_project.name}"
+      }
+    }
+  } */
+
   stage {
     name = "Build-DAST"
 
@@ -104,7 +157,7 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
     }
   }
 
-  /* stage {
+  stage {
     name = "Manual-Approval"
 
     action {
@@ -113,8 +166,6 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
       owner            = "AWS"
       provider         = "Manual"
       version          = "1"
-      input_artifacts  = ["source_output"]
-      output_artifacts = ["dast_artifacts"]
       run_order        = 6
 
       configuration = {
@@ -141,7 +192,7 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
         ProjectName = "${aws_codebuild_project.devsecops_factory_dast_codebuild_project.name}"
       }
     }
-  } */
+  }
 
   tags = {
     pipeline-name = var.devsecops_factory_name
