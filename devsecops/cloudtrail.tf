@@ -1,4 +1,4 @@
-resource "aws_cloudtrail" "devsecops_factory_cloudtrail" {
+/* resource "aws_cloudtrail" "devsecops_factory_cloudtrail" {
   depends_on                    = [aws_s3_bucket_policy.devsecops_factory_cloudtrail_bucket_policy]
   name                          = "${var.devsecops_factory_name}-cloudtrail"
   s3_bucket_name                = aws_s3_bucket.devsecops_factory_cloudtrail_bucket.id
@@ -8,4 +8,4 @@ resource "aws_cloudtrail" "devsecops_factory_cloudtrail" {
   enable_log_file_validation    = true
   is_multi_region_trail         = true
   include_global_service_events = true
-}
+} */
