@@ -161,32 +161,32 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
     name = "Manual-Approval"
 
     action {
-      name             = "Manual-Approval"
-      category         = "Approval"
-      owner            = "AWS"
-      provider         = "Manual"
-      version          = "1"
-      run_order        = 6
+      name      = "Manual-Approval"
+      category  = "Approval"
+      owner     = "AWS"
+      provider  = "Manual"
+      version   = "1"
+      run_order = 6
 
       configuration = {
-        CustomData = "There are no critical security vulnerabilities. Your approval is needed to deploy."
+        CustomData         = "There are no critical security vulnerabilities. Your approval is needed to deploy."
         ExternalEntityLink = "https://console.aws.amazon.com/codesuite/codepipeline/pipelines/${var.devsecops_factory_name}-pipeline/view?region=${var.region}"
-        NotificationArn = "${aws_sns_topic.devsecops_factory_approval_topic.arn}"
+        NotificationArn    = "${aws_sns_topic.devsecops_factory_approval_topic.arn}"
       }
     }
   }
 
-   stage {
+  stage {
     name = "Deploy-PRD"
 
     action {
-      name             = "EKS-Deploy"
-      category         = "Build"
-      owner            = "AWS"
-      provider         = "CodeBuild"
-      version          = "1"
-      input_artifacts  = ["source_output"]
-      run_order        = 7
+      name            = "EKS-Deploy"
+      category        = "Build"
+      owner           = "AWS"
+      provider        = "CodeBuild"
+      version         = "1"
+      input_artifacts = ["source_output"]
+      run_order       = 7
 
       configuration = {
         ProjectName = "${aws_codebuild_project.devsecops_factory_dast_codebuild_project.name}"
