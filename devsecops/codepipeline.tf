@@ -189,7 +189,7 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
       run_order       = 7
 
       configuration = {
-        ProjectName = "${aws_codebuild_project.devsecops_factory_dast_codebuild_project.name}"
+        ProjectName = "${aws_codebuild_project.devsecops_factory_eks_deploy_codebuild_project.name}"
       }
     }
   }

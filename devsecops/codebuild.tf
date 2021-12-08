@@ -245,7 +245,7 @@ resource "aws_codebuild_project" "devsecops_factory_eks_deploy_codebuild_project
 
     environment_variable {
       name  = "REPOSITORY_URI"
-      value = data.aws_ecr_repository.devsecops_factory_ecr_nonprod_repository.repository_url
+      value = data.aws_ecr_repository.devsecops_factory_ecr_prod_repository.repository_url
     }
 
     environment_variable {
