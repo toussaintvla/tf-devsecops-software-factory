@@ -1,6 +1,6 @@
 resource "aws_lambda_function" "devsecops_factory_lambda" {
   filename      = "${path.module}/${var.devsecops_factory_code}"
-  function_name = "${var.devsecops_factory_name}-import-securityhub-eks-function"
+  function_name = "import-securityhub-eks-function"
   role          = aws_iam_role.devsecops_factory_lambda_role.arn
   description   = "DevSecOps Software Factory Function - Import SecurityHub"
   handler       = "lambda_function.lambda_handler"

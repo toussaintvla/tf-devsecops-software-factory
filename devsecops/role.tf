@@ -31,17 +31,6 @@ data "aws_iam_policy_document" "devsecops_factory_sast_policy" {
   }
 }
 
-data "aws_iam_policy_document" "devsecops_factory_cloudtrail_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["cloudtrail.amazonaws.com"]
-    }
-  }
-}
-
 data "aws_iam_policy_document" "devsecops_factory_cloudwatch_event_policy" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -50,18 +39,6 @@ data "aws_iam_policy_document" "devsecops_factory_cloudwatch_event_policy" {
       type        = "Service"
       identifiers = ["events.amazonaws.com"]
     }
-  }
-}
-
-data "aws_iam_policy_document" "devsecops_factory_cloudtrail_access" {
-  statement {
-    sid    = "${local.devsecops_factory_name_iam}CloudTrailAccess"
-    effect = "Allow"
-    actions = [
-      "logs:CreateLogStream",
-      "logs:PutLogEvents"
-    ]
-    resources = ["${aws_cloudwatch_log_group.devsecops_factory_cloudtrail_log_group.arn}"]
   }
 }
 
@@ -260,12 +237,6 @@ resource "aws_iam_policy" "devsecops_factory_sast_access" {
   policy      = data.aws_iam_policy_document.devsecops_factory_sast_access.json
 }
 
-resource "aws_iam_policy" "devsecops_factory_cloudtrail_access" {
-  name        = "${var.devsecops_factory_name}-cloudtrail-policy"
-  description = "Policy for ${var.devsecops_factory_name}-cloudtrail access"
-  policy      = data.aws_iam_policy_document.devsecops_factory_cloudtrail_access.json
-}
-
 resource "aws_iam_policy" "devsecops_factory_codepipeline_access" {
   name        = "${var.devsecops_factory_name}-codepipeline-policy"
   description = "Policy for ${var.devsecops_factory_name}-codepipeline access"
@@ -292,11 +263,6 @@ resource "aws_iam_role_policy_attachment" "devsecops_factory_sast_access_policie
   policy_arn = aws_iam_policy.devsecops_factory_sast_access.arn
 }
 
-resource "aws_iam_role_policy_attachment" "devsecops_factory_cloudtrail_access_policies" {
-  role       = aws_iam_role.devsecops_factory_cloudtrail_role.name
-  policy_arn = aws_iam_policy.devsecops_factory_cloudtrail_access.arn
-}
-
 resource "aws_iam_role_policy_attachment" "devsecops_factory_codepipeline_access_policies" {
   role       = aws_iam_role.devsecops_factory_codepipeline_role.name
   policy_arn = aws_iam_policy.devsecops_factory_codepipeline_access.arn
@@ -318,12 +284,6 @@ resource "aws_iam_role" "devsecops_factory_lambda_role" {
   name               = "${var.devsecops_factory_name}-lambda-role"
   path               = "/"
   assume_role_policy = data.aws_iam_policy_document.devsecops_factory_lambda_policy.json
-}
-
-resource "aws_iam_role" "devsecops_factory_cloudtrail_role" {
-  name               = "${var.devsecops_factory_name}-cloudtrail-role"
-  path               = "/"
-  assume_role_policy = data.aws_iam_policy_document.devsecops_factory_cloudtrail_policy.json
 }
 
 resource "aws_iam_role" "devsecops_factory_cloudwatch_event_role" {

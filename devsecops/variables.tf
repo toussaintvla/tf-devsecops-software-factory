@@ -5,7 +5,7 @@ variable "devsecops_factory_name" {
 }
 
 variable "region" {
-  default = "us-east-1"
+  default = "us-east-2"
 }
 
 variable "branch_name" {
@@ -17,7 +17,7 @@ variable "branch_name" {
 variable "repository_name" {
   type        = string
   description = "Git repository name"
-  default     = "devops-pro"
+  default     = "software-factory"
 }
 
 variable "sast_tool" {
@@ -73,13 +73,13 @@ variable "pipeline_approver_email" {
 variable "ecr_nonprod_repository" {
   type        = string
   description = "Container image repository"
-  default     = "test"
+  default     = "wordpress-staging"
 }
 
 variable "ecr_prod_repository" {
   type        = string
   description = "Container image repository"
-  default     = "nginx-prod"
+  default     = "wordpress-prod"
 }
 
 variable "eks_nonprod_cluster" {

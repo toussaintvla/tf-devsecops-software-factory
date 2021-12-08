@@ -4,6 +4,6 @@ resource "aws_kms_key" "devsecops_factory_kms_key" {
   enable_key_rotation = true
   policy              = data.aws_iam_policy_document.devsecops_factory_pipeline_key_access.json
   tags = {
-    pipeline-name = var.devsecops_factory_name
+    pipeline-name = "${var.devsecops_factory_name}-pipeline"
   }
 }

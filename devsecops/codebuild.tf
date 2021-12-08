@@ -41,7 +41,7 @@ resource "aws_codebuild_project" "devsecops_factory_secrets_analysis_codebuild_p
   }
 
   tags = {
-    pipeline-name = var.devsecops_factory_name
+    pipeline-name = "${var.devsecops_factory_name}-pipeline"
   }
 }
 
@@ -103,7 +103,7 @@ resource "aws_codebuild_project" "devsecops_factory_sast_codebuild_project" {
   }
 
   tags = {
-    pipeline-name = var.devsecops_factory_name
+    pipeline-name = "${var.devsecops_factory_name}-pipeline"
   }
 }
 
@@ -160,12 +160,12 @@ resource "aws_codebuild_project" "devsecops_factory_ecr_sast_codebuild_project" 
   }
 
   tags = {
-    pipeline-name = var.devsecops_factory_name
+    pipeline-name = "${var.devsecops_factory_name}-pipeline"
   }
 }
 
 resource "aws_codebuild_project" "devsecops_factory_dast_codebuild_project" {
-  name           = "${var.devsecops_factory_name}dast-analysis-codebuild-project"
+  name           = "${var.devsecops_factory_name}-dast-analysis-codebuild-project"
   description    = "Dynamic Code Analysis Build Project"
   build_timeout  = "10"
   queued_timeout = "10"
@@ -215,6 +215,63 @@ resource "aws_codebuild_project" "devsecops_factory_dast_codebuild_project" {
   }
 
   tags = {
-    pipeline-name = var.devsecops_factory_name
+    pipeline-name = "${var.devsecops_factory_name}-pipeline"
+  }
+}
+
+resource "aws_codebuild_project" "devsecops_factory_eks_deploy_codebuild_project" {
+  name           = "${var.devsecops_factory_name}-eks-deploy-codebuild-project"
+  description    = "EKS Prod Deploy Build Project"
+  build_timeout  = "10"
+  queued_timeout = "10"
+  service_role   = aws_iam_role.devsecops_factory_sast_role.arn
+  encryption_key = aws_kms_key.devsecops_factory_kms_key.arn
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type                = "BUILD_GENERAL1_SMALL"
+    image                       = "aws/codebuild/standard:4.0"
+    type                        = "LINUX_CONTAINER"
+    image_pull_credentials_type = "CODEBUILD"
+    privileged_mode             = true
+
+    environment_variable {
+      name  = "IMAGE_REPO_NAME"
+      value = var.ecr_nonprod_repository
+    }
+
+    environment_variable {
+      name  = "REPOSITORY_URI"
+      value = data.aws_ecr_repository.devsecops_factory_ecr_nonprod_repository.repository_url
+    }
+
+    environment_variable {
+      name  = "EKS_CLUSTER_NAME"
+      value = var.eks_nonprod_cluster
+    }
+
+    environment_variable {
+      name  = "EKS_KUBECTL_ROLE_ARN"
+      value = aws_iam_role.devsecops_factory_sast_role.arn
+    }
+  }
+
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = data.local_file.buildspec_prod.content
+  }
+
+  logs_config {
+    cloudwatch_logs {
+      group_name  = aws_cloudwatch_log_group.devsecops_factory_pipeline_log_group.name
+      stream_name = "${var.devsecops_factory_name}-eks-deploy-log-stream"
+    }
+  }
+
+  tags = {
+    pipeline-name = "${var.devsecops_factory_name}-pipeline"
   }
 }

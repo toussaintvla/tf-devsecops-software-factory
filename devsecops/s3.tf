@@ -3,7 +3,7 @@ resource "aws_s3_bucket" "devsecops_factory_artifacts_bucket" {
   acl    = "private"
 
   tags = {
-    pipeline-name = var.devsecops_factory_name
+    pipeline-name = "${var.devsecops_factory_name}-pipeline"
   }
 
   server_side_encryption_configuration {

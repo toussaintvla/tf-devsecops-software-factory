@@ -35,12 +35,12 @@ phases:
       - echo ""
       - |
         if (grep -E 'High|Critical' payload.json); then
-          aws lambda invoke --function-name ImpToSecurityHubEKS --payload file://payload.json anchore-reports/*-vuln.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
+          aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json anchore-reports/*-vuln.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
           echo "There are critical or high vulnerabilities.. failing the build"
           docker push $REPOSITORY_URI:latest
           exit 1;
         elif (grep -E 'Medium' payload.json); then
-          aws lambda invoke --function-name ImpToSecurityHubEKS --payload file://payload.json anchore-reports/*-vuln.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
+          aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json anchore-reports/*-vuln.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
           docker push $REPOSITORY_URI:latest
         else
           docker push $REPOSITORY_URI:latest

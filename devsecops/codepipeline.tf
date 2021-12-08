@@ -195,6 +195,6 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
   }
 
   tags = {
-    pipeline-name = var.devsecops_factory_name
+    pipeline-name = "${var.devsecops_factory_name}-pipeline"
   }
 }
