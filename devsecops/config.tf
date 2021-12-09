@@ -33,17 +33,3 @@ resource "aws_config_config_rule" "devsecops_factory_2_rule" {
     source_identifier = "CODEBUILD_PROJECT_SOURCE_REPO_URL_CHECK"
   }
 }
-
-resource "aws_config_config_rule" "devsecops_factory_3_rule" {
-  name        = "${var.devsecops_factory_name}-cloud-trail-log-file-validation-enabled"
-  description = <<EOF
-    "Checks whether AWS CloudTrail creates a signed digest file with logs.
-    AWS recommends that the file validation must be enabled on all trails.
-    The rule is noncompliant if the validation is not enabled."
-  EOF
-
-  source {
-    owner             = "AWS"
-    source_identifier = "CLOUD_TRAIL_LOG_FILE_VALIDATION_ENABLED"
-  }
-}
