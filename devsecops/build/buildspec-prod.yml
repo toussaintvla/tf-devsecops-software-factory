@@ -23,8 +23,8 @@ phases:
       - echo "inside post_buil .. deploying build"
       - bash -c "if [ /"$CODEBUILD_BUILD_SUCCEEDING/" == /"0/" ]; then exit 1; fi"
       - aws eks update-kubeconfig --name $EKS_PROD_CLUSTER_NAME
-      - kubectl patch deployment wordpress-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"build\":\"prod-123456\"}}}}}}"
-      - printf '[{"name":"prod-deployment","imageUri":"%s"}]' $REPOSITORY_URI:$TAG > build.json
+      - kubectl patch deployment wordpress-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"build\":\"$CODEBUILD_RESOLVED_SOURCE_VERSION\"}}}}}}"
+      - printf '[{"name":"prod-deployment","imageUri":"%s"}]' $REPOSITORY_URI:$IMG_TAG > build.json
 artifacts:
   type: zip
   files: '**/*'

@@ -28,31 +28,32 @@ phases:
             echo "ECR scan failed";
             exit 1;
           fi
-          stat=$(aws ecr describe-image-scan-findings --repository-name eks-container-repo --image-id imageTag=latest | jq -r '.imageScanStatus.status');
+          stat=$(aws ecr describe-image-scan-findings --repository-name $IMAGE_REPO_NAME --image-id imageTag=latest | jq -r '.imageScanStatus.status');
           sleep 5;
         done
-      - aws ecr describe-image-scan-findings --repository-name eks-container-repo --image-id imageTag=latest > ecr_scan_result.json
+      - aws ecr describe-image-scan-findings --repository-name $IMAGE_REPO_NAME --image-id imageTag=latest > ecr_scan_result.json
   post_build:
     commands:
       - |
         jq "{ \"messageType\": \"CodeScanReport\", \"reportType\": \"ECR\", \
-        \"createdAt\": $(date +\"%Y-%m-%dT%H:%M:%S.%3NZ\"), \"source_repository\": env.CODEBUILD_SOURCE_REPO_URL, \
+        \"createdAt\": $(date +\"%Y-%m-%dT%H:%M:%S.%3NZ\"), \
+        \"source_repository\": env.CODEBUILD_SOURCE_REPO_URL, \
         \"source_branch\": env.CODEBUILD_SOURCE_VERSION, \
         \"build_id\": env.CODEBUILD_BUILD_ID, \
         \"source_commitid\": env.CODEBUILD_RESOLVED_SOURCE_VERSION, \
         \"report\": . }" ecr_scan_result.json > payload.json
       - echo ""
-      - |
-        if (grep -E 'HIGH|CRITICAL' ecr_scan_result.json); then
-          aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json ecr_scan_result.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
-          echo "There are critical or high vulnerabilities.. failing the build"
-          exit 1;
-        elif (grep -E 'MEDIUM' ecr_scan_result.json); then
-          aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json ecr_scan_result.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
-        fi
+      # - |
+      #   if (grep -E 'HIGH|CRITICAL' ecr_scan_result.json); then
+      #     aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json ecr_scan_result.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
+      #     echo "There are critical or high vulnerabilities.. failing the build"
+      #     exit 1;
+      #   elif (grep -E 'MEDIUM' ecr_scan_result.json); then
+      #     aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json ecr_scan_result.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
+      #   fi
       - aws eks update-kubeconfig --name $EKS_CLUSTER_NAME
-      - kubectl patch deployment wordpress-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"build\":\"dev-123456\"}}}}}}"
-      - printf '[{"name":"hello-k8s","imageUri":"%s"}]' $REPOSITORY_URI:$TAG > build.json
+      - kubectl patch deployment wordpress-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"build\":\"$CODEBUILD_RESOLVED_SOURCE_VERSION\"}}}}}}"
+      - printf '[{"name":"ecr-k8s","imageUri":"%s"}]' $REPOSITORY_URI:$IMG_TAG > build.json
 artifacts:
   type: zip
   files: '**/*'

@@ -16,35 +16,40 @@ phases:
     commands:
       - echo "inside build stage"
       - cd $CODEBUILD_SRC_DIR
-      - docker build . -t $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION -f dockerfile-wp.dockerfile
+      - SOURCE_COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMG_TAG=${SOURCE_COMMIT_HASH:-latest}
+      - docker build . -t $IMAGE_REPO_NAME:$IMG_TAG -f dockerfile-wp.dockerfile
       # Snyk Auth using API token
       - snyk config set api=$SnykApiKey
       ## To scan the container image
-      - snyk container test $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION --file=dockerfile-wp.dockerfile --json --severity-threshold=high > snyk-results.json
-      - TAG="$CODEBUILD_RESOLVED_SOURCE_VERSION"
-      - docker tag $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION $REPOSITORY_URI:latest
+      - snyk container test $IMAGE_REPO_NAME:$IMG_TAG --file=dockerfile-wp.dockerfile --json --severity-threshold=high > snyk-results.json
+      - docker tag $IMAGE_REPO_NAME:$IMG_TAG $REPOSITORY_URI:latest
+      - docker tag $IMAGE_REPO_NAME:$IMG_TAG $REPOSITORY_URI:$IMG_TAG
       - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
   post_build:
     commands:
       - |
         jq "{ \"messageType\": \"CodeScanReport\", \"reportType\": \"SNYK\", \
-        \"createdAt\": $(date +\"%Y-%m-%dT%H:%M:%S.%3NZ\"), \"source_repository\": env.CODEBUILD_SOURCE_REPO_URL, \
+        \"createdAt\": $(date +\"%Y-%m-%dT%H:%M:%S.%3NZ\"), \
+        \"source_repository\": env.CODEBUILD_SOURCE_REPO_URL, \
         \"source_branch\": env.CODEBUILD_SOURCE_VERSION, \
         \"build_id\": env.CODEBUILD_BUILD_ID, \
         \"source_commitid\": env.CODEBUILD_RESOLVED_SOURCE_VERSION, \
         \"report\": . }" snyk-results.json > payload.json
       - echo ""
-      - |
-        if (grep -E 'high|critical' payload.json); then
-          aws lambda invoke --function-name ImpToSecurityHubEKS --payload file://payload.json snyk-results.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
-          echo "There are critical or high vulnerabilities.. failing the build"
-          docker push $REPOSITORY_URI:latest
-          exit 1;
-        elif (grep -E 'medium|low' payload.json); then
-          aws lambda invoke --function-name ImpToSecurityHubEKS --payload file://payload.json snyk-results.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
-          docker push $REPOSITORY_URI:latest
-        fi
-      - printf '[{"name":"hello-k8s","imageUri":"%s"}]' $REPOSITORY_URI:$TAG > build.json
+      # - |
+      #   if (grep -E 'high|critical' payload.json); then
+      #     aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json snyk-results.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
+      #     echo "There are critical or high vulnerabilities.. failing the build"
+      #     docker push $REPOSITORY_URI:latest
+      #     docker push $REPOSITORY_URI:$IMG_TAG
+      #     exit 1;
+      #   elif (grep -E 'medium|low' payload.json); then
+      #     aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json snyk-results.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
+      #     docker push $REPOSITORY_URI:latest
+      #     docker push $REPOSITORY_URI:$IMG_TAG
+      #   fi
+      - printf '[{"name":"snyk-k8s","imageUri":"%s"}]' $REPOSITORY_URI:$IMG_TAG > build.json
 artifacts:
   type: zip
   files: '**/*'

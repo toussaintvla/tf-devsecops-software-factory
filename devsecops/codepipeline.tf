@@ -33,11 +33,11 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
   }
 
   stage {
-    name = "Build-Secrets"
+    name = "Test-Secrets"
 
     action {
       name             = "Secret-Analysis"
-      category         = "Build"
+      category         = "Test"
       owner            = "AWS"
       provider         = "CodeBuild"
       version          = "1"
@@ -85,61 +85,8 @@ resource "aws_codepipeline" "devsecops_factory_codepipeline" {
     }
   }
 
-  /* stage {
-    name = "Build-Secrets-Scanning-and-SAST"
-
-    action {
-      name             = "Secret-Analysis"
-      category         = "Build"
-      owner            = "AWS"
-      provider         = "CodeBuild"
-      version          = "1"
-      input_artifacts  = ["source_output"]
-      output_artifacts = ["secret_artifacts"]
-      run_order        = 2
-
-      configuration = {
-        ProjectName = "${aws_codebuild_project.devsecops_factory_secrets_analysis_codebuild_project.name}"
-      }
-    }
-
-    action {
-      name             = "SAST-Analysis"
-      category         = "Build"
-      owner            = "AWS"
-      provider         = "CodeBuild"
-      version          = "1"
-      input_artifacts  = ["source_output"]
-      output_artifacts = ["sast_artifacts"]
-      run_order        = 2
-
-      configuration = {
-        ProjectName = "${aws_codebuild_project.devsecops_factory_sast_codebuild_project.name}"
-      }
-    }
-  }
-
   stage {
-    name = "Build-SAST-and-Deploy-STG"
-
-    action {
-      name             = "ECR-SAST-Analysis"
-      category         = "Build"
-      owner            = "AWS"
-      provider         = "CodeBuild"
-      version          = "1"
-      input_artifacts  = ["source_output"]
-      output_artifacts = ["ecr_sast_artifacts"]
-      run_order        = 4
-
-      configuration = {
-        ProjectName = "${aws_codebuild_project.devsecops_factory_ecr_sast_codebuild_project.name}"
-      }
-    }
-  } */
-
-  stage {
-    name = "Build-DAST"
+    name = "Test-DAST"
 
     action {
       name             = "DAST-Analysis"

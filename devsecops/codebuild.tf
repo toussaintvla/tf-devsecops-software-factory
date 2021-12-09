@@ -21,11 +21,6 @@ resource "aws_codebuild_project" "devsecops_factory_secrets_analysis_codebuild_p
       name  = "CODECOMMIT_REPO_NAME"
       value = var.repository_name
     }
-
-    environment_variable {
-      name  = "REPOSITORY_URI"
-      value = data.aws_ecr_repository.devsecops_factory_ecr_nonprod_repository.repository_url
-    }
   }
 
   source {
@@ -245,11 +240,11 @@ resource "aws_codebuild_project" "devsecops_factory_eks_deploy_codebuild_project
 
     environment_variable {
       name  = "REPOSITORY_URI"
-      value = data.aws_ecr_repository.devsecops_factory_ecr_prod_repository.repository_url
+      value = data.aws_ecr_repository.devsecops_factory_ecr_nonprod_repository.repository_url
     }
 
     environment_variable {
-      name  = "EKS_CLUSTER_NAME"
+      name  = "EKS_PROD_CLUSTER_NAME"
       value = var.eks_nonprod_cluster
     }
 

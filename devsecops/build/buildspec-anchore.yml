@@ -18,34 +18,43 @@ phases:
     commands:
       - echo "inside build stage"
       - cd $CODEBUILD_SRC_DIR
-      - docker build . -t $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION -f dockerfile-wp.dockerfile
-      - curl -s https://ci-tools.anchore.io/inline_scan-v0.6.0 | bash -s -- -r $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
-      - TAG="$CODEBUILD_RESOLVED_SOURCE_VERSION"
-      - docker tag $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION $REPOSITORY_URI:latest
+      - SOURCE_COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMG_TAG=${SOURCE_COMMIT_HASH:-latest}
+      - docker build . -t $IMAGE_REPO_NAME:$IMG_TAG -f dockerfile-wp.dockerfile
+      ## To scan the container image
+      - curl -s https://ci-tools.anchore.io/inline_scan-v0.6.0 | bash -s -- -r $IMAGE_REPO_NAME:$IMG_TAG
+      - docker tag $IMAGE_REPO_NAME:$IMG_TAG $REPOSITORY_URI:latest
+      - docker tag $IMAGE_REPO_NAME:$IMG_TAG $REPOSITORY_URI:$IMG_TAG
       - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
   post_build:
     commands:
       - |
         jq "{ \"messageType\": \"CodeScanReport\", \"reportType\": \"ANCHORE\", \
-        \"createdAt\": $(date +\"%Y-%m-%dT%H:%M:%S.%3NZ\"), \"source_repository\": env.CODEBUILD_SOURCE_REPO_URL, \
+        \"createdAt\": $(date +\"%Y-%m-%dT%H:%M:%S.%3NZ\"), \
+        \"source_repository\": env.CODEBUILD_SOURCE_REPO_URL, \
         \"source_branch\": env.CODEBUILD_SOURCE_VERSION, \
         \"build_id\": env.CODEBUILD_BUILD_ID, \
         \"source_commitid\": env.CODEBUILD_RESOLVED_SOURCE_VERSION, \
         \"report\": . }" anchore-reports/*-vuln.json > payload.json
       - echo ""
-      - |
-        if (grep -E 'High|Critical' payload.json); then
-          aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json anchore-reports/*-vuln.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
-          echo "There are critical or high vulnerabilities.. failing the build"
-          docker push $REPOSITORY_URI:latest
-          exit 1;
-        elif (grep -E 'Medium' payload.json); then
-          aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json anchore-reports/*-vuln.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
-          docker push $REPOSITORY_URI:latest
-        else
-          docker push $REPOSITORY_URI:latest
-        fi
-      - printf '[{"name":"hello-k8s","imageUri":"%s"}]' $REPOSITORY_URI:$TAG > build.json
+      # - |
+      #   if (grep -E 'High|Critical' payload.json); then
+      #     aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json anchore-reports/*-vuln.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
+      #     echo "There are critical or high vulnerabilities.. failing the build"
+      #     docker push $REPOSITORY_URI:latest
+      #     docker push $REPOSITORY_URI:$IMG_TAG
+      #     exit 1;
+      #   elif (grep -E 'Medium' payload.json); then
+      #     aws lambda invoke --function-name import-securityhub-eks-function --payload file://payload.json anchore-reports/*-vuln.json && echo "LAMBDA_SUCCEDED" || echo "LAMBDA_FAILED";
+      #     docker push $REPOSITORY_URI:latest
+      #     docker push $REPOSITORY_URI:$IMG_TAG
+      #   else
+      #     docker push $REPOSITORY_URI:latest
+      #     docker push $REPOSITORY_URI:$IMG_TAG
+      #   fi
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMG_TAG
+      - printf '[{"name":"anchore-k8s","imageUri":"%s"}]' $REPOSITORY_URI:$IMG_TAG > build.json
 artifacts:
   type: zip
   files: '**/*'
